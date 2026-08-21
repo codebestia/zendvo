@@ -19,6 +19,7 @@ export interface PendingSavingsTransactionInput {
   provider?: string;
 }
 
+/** Records an authenticated deposit or withdrawal before chain confirmation. */
 export async function recordPendingSavingsTransaction(
   input: PendingSavingsTransactionInput,
 ) {
@@ -84,6 +85,7 @@ export async function recordPendingSavingsTransaction(
   return { success: true, transaction };
 }
 
+/** Validates gift pricing and refreshes the dashboard after creation. */
 export async function createGift(formData: FormData) {
   console.log("Creating gift...");
 
@@ -103,6 +105,7 @@ export async function createGift(formData: FormData) {
   return { success: true };
 }
 
+/** Refreshes the dashboard after a gift claim request. */
 export async function claimGift(giftId: string) {
   console.log(`Claiming gift: ${giftId}`);
 

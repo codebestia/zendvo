@@ -1,3 +1,4 @@
+/** Runs startup checks and registers backend background jobs. */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "edge") {
     const { checkMigrationStatus } = await import("./lib/db/migration-checker");

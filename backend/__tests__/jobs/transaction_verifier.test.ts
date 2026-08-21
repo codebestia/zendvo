@@ -16,6 +16,7 @@ const transaction: PendingTransaction = {
   createdAt: new Date("2026-08-21T10:00:00.000Z"),
 };
 
+/** Creates mocked verifier dependencies for reconciliation tests. */
 function createDependencies(
   overrides: Partial<TransactionVerifierDependencies> = {},
 ): TransactionVerifierDependencies {

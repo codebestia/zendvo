@@ -44,6 +44,7 @@ export interface ReconciliationSummary {
   errors: number;
 }
 
+/** Returns the configured Soroban RPC endpoint for transaction checks. */
 function getRpcUrl(): string {
   const rpcUrl = process.env.SOROBAN_RPC_URL || process.env.STELLAR_RPC_URL;
   if (!rpcUrl) {
@@ -54,6 +55,7 @@ function getRpcUrl(): string {
   return rpcUrl;
 }
 
+/** Loads pending transactions that have an on-chain hash to reconcile. */
 async function listPendingTransactions(): Promise<PendingTransaction[]> {
   const pendingTransactions = await db
     .select({
@@ -80,6 +82,7 @@ async function listPendingTransactions(): Promise<PendingTransaction[]> {
   }));
 }
 
+/** Retrieves and normalizes a transaction status from Soroban RPC. */
 async function getTransactionStatus(
   transactionHash: string,
 ): Promise<OnChainTransactionStatus> {
@@ -92,6 +95,7 @@ async function getTransactionStatus(
   return "PENDING";
 }
 
+/** Atomically credits a deposit and marks its transaction completed. */
 async function completeDeposit(
   pendingTransaction: PendingTransaction,
 ): Promise<boolean> {
@@ -170,6 +174,7 @@ async function completeDeposit(
   });
 }
 
+/** Marks a pending non-deposit transaction as completed. */
 async function completeTransaction(transactionId: string): Promise<void> {
   await db
     .update(transactions)
@@ -182,6 +187,7 @@ async function completeTransaction(transactionId: string): Promise<void> {
     );
 }
 
+/** Marks a pending transaction as failed. */
 async function failTransaction(transactionId: string): Promise<void> {
   await db
     .update(transactions)
@@ -194,6 +200,7 @@ async function failTransaction(transactionId: string): Promise<void> {
     );
 }
 
+/** Builds the database and RPC dependencies used by the verifier. */
 export function createTransactionVerifierDependencies(): TransactionVerifierDependencies {
   return {
     listPendingTransactions,
@@ -206,6 +213,7 @@ export function createTransactionVerifierDependencies(): TransactionVerifierDepe
   };
 }
 
+/** Reconciles each pending blockchain transaction and returns sweep totals. */
 export async function reconcilePendingTransactions(
   dependencies: TransactionVerifierDependencies =
     createTransactionVerifierDependencies(),
@@ -260,6 +268,7 @@ export async function reconcilePendingTransactions(
   return summary;
 }
 
+/** Creates an overlap-safe callback for scheduled reconciliation sweeps. */
 export function createTransactionVerifierRunner(
   reconcile: () => Promise<ReconciliationSummary> =
     reconcilePendingTransactions,
@@ -288,6 +297,7 @@ export function createTransactionVerifierRunner(
   };
 }
 
+/** Registers the transaction verifier with the configured cron schedule. */
 export function runTransactionVerifierCron(
   schedule = process.env.TRANSACTION_VERIFIER_CRON || DEFAULT_INTERVAL,
 ) {

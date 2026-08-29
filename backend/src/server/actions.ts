@@ -35,20 +35,26 @@ export async function recordPendingSavingsTransaction(
   const currency = input.currency?.trim().toUpperCase();
   const blockchainTxHash = input.blockchainTxHash?.trim();
 
+  if (input.type !== "deposit" && input.type !== "withdrawal") {
+    return { success: false, error: "Invalid transaction type" };
+  }
   if (!Number.isFinite(amount) || amount <= 0) {
     return { success: false, error: "Amount must be greater than zero" };
   }
   if (!currency) {
     return { success: false, error: "Currency is required" };
   }
-  if (!blockchainTxHash) {
-    return { success: false, error: "Blockchain transaction hash is required" };
+  if (!blockchainTxHash || !/^[a-fA-F0-9]{64}$/.test(blockchainTxHash)) {
+    return { success: false, error: "Valid 64-character blockchain transaction hash is required" };
   }
 
   const existing = await db.query.transactions.findFirst({
     where: eq(transactions.blockchainTxHash, blockchainTxHash),
   });
   if (existing) {
+    if (existing.userId !== authPayload.userId) {
+      return { success: false, error: "Transaction already exists" };
+    }
     return { success: true, transaction: existing };
   }
 
@@ -95,6 +101,9 @@ export async function recordPendingSavingsTransaction(
       where: eq(transactions.blockchainTxHash, blockchainTxHash),
     });
     if (existingOnConflict) {
+      if (existingOnConflict.userId !== authPayload.userId) {
+        return { success: false, error: "Transaction already exists" };
+      }
       return { success: true, transaction: existingOnConflict };
     }
     throw err;

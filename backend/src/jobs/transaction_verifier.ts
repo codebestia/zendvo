@@ -20,7 +20,7 @@ export interface PendingTransaction {
   id: string;
   userId: string;
   walletId: string | null;
-  type: "deposit" | "withdrawal" | "transfer";
+  type: "deposit" | "withdrawal" | "transfer" | "blockchain_submission";
   amount: number;
   currency: string;
   blockchainTxHash: string;

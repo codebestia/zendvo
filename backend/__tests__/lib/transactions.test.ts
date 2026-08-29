@@ -18,13 +18,13 @@ describe("transactions schema", () => {
 
   it("adds the blockchain hash through a migration", () => {
     const migration = readFileSync(
-      resolve(__dirname, "../../drizzle/0006_transaction_verification.sql"),
+      resolve(__dirname, "../../drizzle/0008_transaction_verification.sql"),
       "utf8",
     );
 
     expect(migration).toContain(
       'ALTER TABLE "transactions" ADD COLUMN "blockchain_tx_hash" text',
     );
-    expect(migration).toContain('CREATE INDEX "tx_blockchain_tx_hash_idx"');
+    expect(migration).toContain('CREATE UNIQUE INDEX "tx_blockchain_tx_hash_idx"');
   });
 });

@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { and, eq } from "drizzle-orm";
-import { validateGiftPricing } from "../lib/pricing";
-import { ACCESS_TOKEN_COOKIE } from "../lib/cookies";
-import { db } from "../lib/db";
-import { transactions, wallets } from "../lib/db/schema";
-import { verifyAccessToken } from "../lib/tokens";
+import { validateGiftPricing } from "@/lib/pricing";
+import { ACCESS_TOKEN_COOKIE } from "@/lib/cookies";
+import { db } from "@/lib/db";
+import { transactions, wallets } from "@/lib/db/schema";
+import { verifyAccessToken } from "@/lib/tokens";
 
 export interface PendingSavingsTransactionInput {
   type: "deposit" | "withdrawal";
@@ -45,6 +45,13 @@ export async function recordPendingSavingsTransaction(
     return { success: false, error: "Blockchain transaction hash is required" };
   }
 
+  const existing = await db.query.transactions.findFirst({
+    where: eq(transactions.blockchainTxHash, blockchainTxHash),
+  });
+  if (existing) {
+    return { success: true, transaction: existing };
+  }
+
   let walletId = input.walletId;
   if (walletId) {
     const wallet = await db.query.wallets.findFirst({
@@ -66,20 +73,32 @@ export async function recordPendingSavingsTransaction(
     walletId = wallet?.id;
   }
 
-  const [transaction] = await db
-    .insert(transactions)
-    .values({
-      userId: authPayload.userId,
-      walletId,
-      type: input.type,
-      status: "pending",
-      amount,
-      currency,
-      blockchainTxHash,
-      reference: input.reference?.trim() || null,
-      provider: input.provider?.trim() || "soroban",
-    })
-    .returning();
+  let transaction;
+  try {
+    const [inserted] = await db
+      .insert(transactions)
+      .values({
+        userId: authPayload.userId,
+        walletId,
+        type: input.type,
+        status: "pending",
+        amount,
+        currency,
+        blockchainTxHash,
+        reference: input.reference?.trim() || null,
+        provider: input.provider?.trim() || "soroban",
+      })
+      .returning();
+    transaction = inserted;
+  } catch (err: unknown) {
+    const existingOnConflict = await db.query.transactions.findFirst({
+      where: eq(transactions.blockchainTxHash, blockchainTxHash),
+    });
+    if (existingOnConflict) {
+      return { success: true, transaction: existingOnConflict };
+    }
+    throw err;
+  }
 
   revalidatePath("/dashboard");
   return { success: true, transaction };

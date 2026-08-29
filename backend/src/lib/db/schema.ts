@@ -11,6 +11,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -315,7 +316,7 @@ export const transactions = pgTable(
     index("tx_user_id_idx").on(table.userId),
     index("tx_wallet_id_idx").on(table.walletId),
     index("tx_created_at_idx").on(table.createdAt),
-    index("tx_blockchain_tx_hash_idx").on(table.blockchainTxHash),
+    uniqueIndex("tx_blockchain_tx_hash_idx").on(table.blockchainTxHash),
   ],
 );
 

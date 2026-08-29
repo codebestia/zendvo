@@ -6,6 +6,9 @@ import { transactions, wallets } from "@/lib/db/schema";
 
 const DEFAULT_INTERVAL = "*/1 * * * *";
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
+const RPC_TIMEOUT_MS = 15 * 1000;
+
+let sharedRpcServer: rpc.Server | null = null;
 
 export type OnChainTransactionStatus =
   | "SUCCESS"
@@ -55,6 +58,14 @@ function getRpcUrl(): string {
   return rpcUrl;
 }
 
+/** Returns a shared Soroban RPC server with timeout configured. */
+function getRpcServer(): rpc.Server {
+  if (!sharedRpcServer) {
+    sharedRpcServer = new rpc.Server(getRpcUrl(), { timeout: RPC_TIMEOUT_MS });
+  }
+  return sharedRpcServer;
+}
+
 /** Loads pending transactions that have an on-chain hash to reconcile. */
 async function listPendingTransactions(): Promise<PendingTransaction[]> {
   const pendingTransactions = await db
@@ -86,7 +97,7 @@ async function listPendingTransactions(): Promise<PendingTransaction[]> {
 async function getTransactionStatus(
   transactionHash: string,
 ): Promise<OnChainTransactionStatus> {
-  const server = new rpc.Server(getRpcUrl());
+  const server = getRpcServer();
   const response = await server.getTransaction(transactionHash);
 
   if (response.status === "SUCCESS") return "SUCCESS";
@@ -202,6 +213,7 @@ async function failTransaction(transactionId: string): Promise<void> {
 
 /** Builds the database and RPC dependencies used by the verifier. */
 export function createTransactionVerifierDependencies(): TransactionVerifierDependencies {
+  getRpcUrl();
   return {
     listPendingTransactions,
     getTransactionStatus,

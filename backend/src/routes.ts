@@ -7,6 +7,7 @@ import {
   DELETE as unlinkBankAccountDelete,
 } from "./api/wallet/banks/route";
 import { GET as walletBalanceGet } from "./api/wallet/balance/route";
+import { POST as walletDepositPost } from "./api/wallet/deposit";
 
 // Streaming middleware to limit upload request size to 10MB without relying solely on Content-Length
 const limitUploadSize = (req: Request, res: Response, next: NextFunction) => {
@@ -51,6 +52,7 @@ import { POST as actionOtpPost } from "./api/auth/action-otp/route";
 import { POST as authPost } from "./api/auth/route";
 // Wallet
 import { GET as walletTransactionsGet } from "./api/wallet/transactions/route";
+import { POST as walletRegisterPost } from "./api/wallet/register/route";
 // Dashboard
 import { GET as dashboardStatsGet } from "./api/dashboard/stats/route";
 import { POST as giftsMetadataPost } from "./api/gifts/metadata/route";
@@ -82,7 +84,20 @@ import { POST as verifyDeletionOtpPost } from "./api/auth/verify-deletion-otp/ro
 // Upload
 import { POST as uploadImagePost } from "./api/upload/image/route";
 
+// Transaction submission
+import { POST as transactionSubmitPost } from "./api/transactions/submit";
+
+// SEP-24 Webhook
+import { POST as sep24WebhookPost } from "./api/webhooks/sep24/route";
+
 export const apiRouter = Router();
+
+// 6. Transaction submission route
+apiRouter.post("/api/transactions/submit", makeExpressHandler(transactionSubmitPost));
+
+// 7. SEP-24 Anchor webhook listener
+apiRouter.post("/api/webhooks/sep24", makeExpressHandler(sep24WebhookPost));
+
 
 // 1. Authentication routes
 apiRouter.post("/api/auth", makeExpressHandler(authPost));
@@ -143,3 +158,7 @@ apiRouter.post("/api/gifts/appreciate", makeExpressHandler(giftAppreciatePost));
 // 4. Users routes
 apiRouter.get("/api/users/resolve", makeExpressHandler(resolveRecipientGet));
 apiRouter.delete("/api/users/account", makeExpressHandler(deleteAccountDelete));
+
+// 5. Wallet routes
+apiRouter.post("/api/wallet/register", makeExpressHandler(walletRegisterPost));
+apiRouter.post("/api/wallet/deposit", makeExpressHandler(walletDepositPost));

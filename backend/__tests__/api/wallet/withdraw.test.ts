@@ -304,4 +304,53 @@ describe("POST /api/wallet/withdraw", () => {
     expect(res.status).toBe(400);
     expect(body.title).toBe("Bad Request");
   });
+
+  it("returns 413 when the request body stream exceeds the 10KB limit", async () => {
+    mockGetAuthPayload.mockResolvedValue({ userId: "user-1" });
+
+    // Construct a large body (> 10KB)
+    const largeBody = {
+      userAddress: VALID_STELLAR_ADDRESS,
+      amount: "100000000",
+      extraData: "a".repeat(11 * 1024), // 11KB of data
+    };
+
+    const res = await POST(makeRequest(largeBody));
+    const body = await res.json();
+
+    expect(res.status).toBe(413);
+    expect(body.title).toBe("Payload Too Large");
+    expect(body.detail).toContain("exceeds the maximum allowed size of 10KB");
+  });
+
+  it("returns 413 when a chunked stream without Content-Length exceeds the 10KB limit", async () => {
+    mockGetAuthPayload.mockResolvedValue({ userId: "user-1" });
+
+    // Simulate chunked streaming by passing a custom ReadableStream
+    const controller = new ReadableStream({
+      start(ctrl) {
+        ctrl.enqueue(new TextEncoder().encode("a".repeat(11 * 1024)));
+        ctrl.close();
+      }
+    });
+
+    const req = new NextRequest("http://localhost/api/wallet/withdraw", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer token",
+      },
+      // Pass the ReadableStream directly as body
+      body: controller,
+      // @ts-ignore
+      duplex: "half",
+    });
+
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(413);
+    expect(body.title).toBe("Payload Too Large");
+    expect(body.detail).toContain("exceeds the maximum allowed size of 10KB");
+  });
 });

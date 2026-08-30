@@ -23,12 +23,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Parse request body
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      body = {};
+    // 2. Parse request body with stream limit check
+    const limit = 10 * 1024; // 10KB limit
+    let body: unknown = {};
+
+    if (request.body) {
+      try {
+        const reader = request.body.getReader();
+        const chunks: Uint8Array[] = [];
+        let totalBytes = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          if (value) {
+            totalBytes += value.length;
+            if (totalBytes > limit) {
+              return createProblemDetails(
+                "about:blank",
+                "Payload Too Large",
+                413,
+                "Request body exceeds the maximum allowed size of 10KB.",
+              );
+            }
+            chunks.push(value);
+          }
+        }
+
+        const combined = new Uint8Array(totalBytes);
+        let offset = 0;
+        for (const chunk of chunks) {
+          combined.set(chunk, offset);
+          offset += chunk.length;
+        }
+
+        const text = new TextDecoder().decode(combined);
+        if (text.trim()) {
+          try {
+            body = JSON.parse(text);
+          } catch {
+            return createProblemDetails(
+              "about:blank",
+              "Bad Request",
+              400,
+              "Invalid JSON payload",
+            );
+          }
+        }
+      } catch (streamError) {
+        return createProblemDetails(
+          "about:blank",
+          "Bad Request",
+          400,
+          "Error reading request stream",
+        );
+      }
     }
 
     const { userAddress, amount } =

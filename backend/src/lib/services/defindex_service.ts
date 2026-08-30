@@ -1010,8 +1010,7 @@ export class DefindexService {
 
       // Simulate against the RPC so the unsigned XDR carries the necessary
       // Soroban contract footprint, resource estimates, and the authorization
-      // entries the user's wallet must sign. Falls back to the un-simulated
-      // transaction when the RPC is unreachable.
+      // entries the user's wallet must sign.
       let finalTx = tx;
       try {
         const simulation = await server.simulateTransaction(tx);
@@ -1019,20 +1018,22 @@ export class DefindexService {
           finalTx = rpc.assembleTransaction(tx, simulation).build();
         } else {
           const simulationError = (simulation as rpc.Api.SimulateTransactionErrorResponse)
-            ?.error;
-          if (simulationError) {
-            throw new DefindexServiceError(
-              `Withdrawal simulation failed for vault ${contractId}: ${simulationError}`,
-              "upstream",
-            );
-          }
+            ?.error || "Unknown simulation failure (missing transactionData)";
+          throw new DefindexServiceError(
+            `Withdrawal simulation failed for vault ${contractId}: ${simulationError}`,
+            "upstream",
+          );
         }
       } catch (error) {
         if (error instanceof DefindexServiceError) {
           throw error;
         }
-        // Network / transport failure: keep the base unsigned transaction.
-        finalTx = tx;
+        const err = error instanceof Error ? error : new Error(String(error));
+        throw new DefindexServiceError(
+          `Withdrawal simulation failed for vault ${contractId}: ${err.message}`,
+          "upstream",
+          err,
+        );
       }
 
       return {

@@ -343,7 +343,7 @@ describe("DefindexService.calculateWithdrawalParams", () => {
     ).rejects.toThrow(/Withdrawal simulation failed/);
   });
 
-  it("falls back to the un-simulated XDR when the RPC is unreachable", async () => {
+  it("throws an upstream DefindexServiceError when the RPC is unreachable during simulation", async () => {
     mockSimulateTransaction.mockImplementation(async (tx: any) => {
       if (invokedMethod(tx) === "withdraw") {
         throw new Error("network down");
@@ -360,20 +360,16 @@ describe("DefindexService.calculateWithdrawalParams", () => {
       }
     });
 
-    const result = await DefindexService.calculateWithdrawalParams(
-      USER_ADDRESS,
-      REQUESTED_AMOUNT,
-    );
+    await expect(
+      DefindexService.calculateWithdrawalParams(USER_ADDRESS, REQUESTED_AMOUNT),
+    ).rejects.toThrow(DefindexServiceError);
 
-    // Parameters are still computed and a decodable unsigned XDR is returned.
-    expect(result.sharesToBurn).toBe(EXPECTED_SHARES.toString());
-    const envelope = xdr.TransactionEnvelope.fromXDR(
-      result.unsignedXdr,
-      "base64",
-    );
-    expect(hostFunctionOf(envelope).invokeContract().functionName().toString()).toBe(
-      "withdraw",
-    );
+    await expect(
+      DefindexService.calculateWithdrawalParams(USER_ADDRESS, REQUESTED_AMOUNT),
+    ).rejects.toMatchObject({
+      kind: "upstream",
+      message: expect.stringContaining("Withdrawal simulation failed for vault"),
+    });
   });
 
   it("wraps unexpected errors in DefindexServiceError", async () => {
